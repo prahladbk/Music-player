@@ -77,26 +77,6 @@ private void loadSongs() {
     public void insertSong(Song song) {
         Executors.newSingleThreadExecutor().execute(() -> songDao.insertSong(song));
     }
-//    public LiveData<List<Song>> getLikedSongs() {
-//        return Transformations.map(
-//                AppDatabase.getInstance(application).likedSongDao().getAllLikedSongs(),
-//                likedSongList -> {
-//                    List<Song> allSongs = getSongs().getValue(); // assuming you already load all songs
-//                    List<Song> likedSongs = new ArrayList<>();
-//                    if (allSongs != null) {
-//                        for (LikedSong liked : likedSongList) {
-//                            for (Song song : allSongs) {
-//                                if (song.getId().equals(liked.getId())) {
-//                                    likedSongs.add(song);
-//                                    break;
-//                                }
-//                            }
-//                        }
-//                    }
-//                    return likedSongs;
-//                }
-//        );
-//    }
 
 
 }

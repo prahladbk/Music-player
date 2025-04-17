@@ -74,7 +74,6 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
             albumArt = itemView.findViewById(R.id.imageAlbumArt);
             likeBtn = itemView.findViewById(R.id.imageLike);
         }
-
         public void bind(final Song song, final OnItemClickListener listener) {
             title.setText(song.getTitle());
 
@@ -90,22 +89,25 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
                 albumArt.setImageResource(R.drawable.ic_music_placeholder);
             }
 
+            // 👉 Set the initial like icon based on song's liked status
+            if (song.isLiked()) {
+                likeBtn.setImageResource(R.drawable.baseline_favorite_fill);
+            } else {
+                likeBtn.setImageResource(R.drawable.baseline_favorite_border);
+            }
 
-
+            // Song item click
             itemView.setOnClickListener(v -> {
-                listener.onItemClick(song); // still notifies ViewModel/Fragment if needed
+                listener.onItemClick(song);
                 int position = getBindingAdapterPosition();
-                // Launch PlayerActivity with song details
                 Context context = itemView.getContext();
-                Log.d("PBK", "bind: "+new ArrayList<>(songList));
-                Log.d("PBK", "bind: "+position);
                 Intent intent = new Intent(context, PlayerActivity.class);
-                intent.putExtra("songs", new ArrayList<>(songList)); // Serializable
+                intent.putExtra("songs", new ArrayList<>(songList));
                 intent.putExtra("position", position);
                 context.startActivity(intent);
-
             });
-            // Handle like button click
+
+            // Like button click
             likeBtn.setOnClickListener(v -> {
                 Context context = itemView.getContext();
                 AppDatabase db = AppDatabase.getInstance(context);
@@ -114,24 +116,83 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
                 new Thread(() -> {
                     Song dbSong = dao.getSongById(song.getId());
                     if (dbSong != null) {
-                        dbSong.setLiked(!dbSong.isLiked());
+                        boolean newLikedState = !dbSong.isLiked();
+                        dbSong.setLiked(newLikedState);
                         dao.updateSong(dbSong);
 
-                        // update UI on main thread
+                        // ✅ Optional: update the current song object's liked state too
+                        song.setLiked(newLikedState);
+
                         likeBtn.post(() -> {
-                            if (dbSong.isLiked()) {
-                                likeBtn.setImageResource(R.drawable.baseline_favorite_border);
-                            } else {
+                            if (newLikedState) {
                                 likeBtn.setImageResource(R.drawable.baseline_favorite_fill);
+                            } else {
+                                likeBtn.setImageResource(R.drawable.baseline_favorite_border);
                             }
                         });
                     }
                 }).start();
             });
-
-
-
         }
+
+
+//        public void bind(final Song song, final OnItemClickListener listener) {
+//            title.setText(song.getTitle());
+//
+//            if (song.getAlbumArt() != null && !song.getAlbumArt().isEmpty()) {
+//                try {
+//                    Uri uri = Uri.parse(song.getAlbumArt());
+//                    albumArt.setImageURI(uri);
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                    albumArt.setImageResource(R.drawable.ic_music_placeholder);
+//                }
+//            } else {
+//                albumArt.setImageResource(R.drawable.ic_music_placeholder);
+//            }
+//
+//
+//
+//            itemView.setOnClickListener(v -> {
+//                listener.onItemClick(song); // still notifies ViewModel/Fragment if needed
+//                int position = getBindingAdapterPosition();
+//                // Launch PlayerActivity with song details
+//                Context context = itemView.getContext();
+//                Log.d("PBK", "bind: "+new ArrayList<>(songList));
+//                Log.d("PBK", "bind: "+position);
+//                Intent intent = new Intent(context, PlayerActivity.class);
+//                intent.putExtra("songs", new ArrayList<>(songList)); // Serializable
+//                intent.putExtra("position", position);
+//                context.startActivity(intent);
+//
+//            });
+//            // Handle like button click
+//            likeBtn.setOnClickListener(v -> {
+//                Context context = itemView.getContext();
+//                AppDatabase db = AppDatabase.getInstance(context);
+//                SongDao dao = db.songDao();
+//
+//                new Thread(() -> {
+//                    Song dbSong = dao.getSongById(song.getId());
+//                    if (dbSong != null) {
+//                        dbSong.setLiked(!dbSong.isLiked());
+//                        dao.updateSong(dbSong);
+//
+//                        // update UI on main thread
+//                        likeBtn.post(() -> {
+//                            if (dbSong.isLiked()) {
+//                                likeBtn.setImageResource(R.drawable.baseline_favorite_fill);
+//                            } else {
+//                                likeBtn.setImageResource(R.drawable.baseline_favorite_border);
+//                            }
+//                        });
+//                    }
+//                }).start();
+//            });
+//
+//
+//
+//        }
 
     }
 }
