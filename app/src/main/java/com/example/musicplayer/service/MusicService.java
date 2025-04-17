@@ -1,5 +1,10 @@
 package com.example.musicplayer.service;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -9,12 +14,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import androidx.media.session.MediaButtonReceiver;
+
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import androidx.core.app.NotificationCompat;
 import androidx.media.MediaBrowserServiceCompat;
 
+import com.example.musicplayer.R;
 import com.example.musicplayer.data.model.Song;
 import com.example.musicplayer.utils.MediaUtils;
 
@@ -37,7 +46,6 @@ public class MusicService extends MediaBrowserServiceCompat {
         @Override
         public void run() {
             if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                // Update the playback state with the current position
                 updatePlaybackState(PlaybackStateCompat.STATE_PLAYING);
                 progressHandler.postDelayed(this, 1000);
             }
@@ -61,6 +69,13 @@ public class MusicService extends MediaBrowserServiceCompat {
                             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                             .build())
                     .build();
+
+            NotificationChannel channel = new NotificationChannel(
+                    "music_channel",
+                    "Music Playback",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
 
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
@@ -70,6 +85,7 @@ public class MusicService extends MediaBrowserServiceCompat {
                     mediaPlayer.start();
                     updatePlaybackState(PlaybackStateCompat.STATE_PLAYING);
                     progressHandler.post(progressRunnable);
+                    showNotification(mediaSession.getController().getMetadata(), PlaybackStateCompat.STATE_PLAYING);
                 }
             }
 
@@ -79,6 +95,7 @@ public class MusicService extends MediaBrowserServiceCompat {
                     mediaPlayer.pause();
                     updatePlaybackState(PlaybackStateCompat.STATE_PAUSED);
                     progressHandler.removeCallbacks(progressRunnable);
+                    showNotification(mediaSession.getController().getMetadata(), PlaybackStateCompat.STATE_PAUSED);
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     audioManager.abandonAudioFocusRequest(focusRequest);
@@ -140,7 +157,6 @@ public class MusicService extends MediaBrowserServiceCompat {
                     updatePlaybackState(PlaybackStateCompat.STATE_PAUSED);
                 }
                 break;
-
             case AudioManager.AUDIOFOCUS_LOSS:
                 if (mediaPlayer != null && mediaPlayer.isPlaying()) {
                     mediaPlayer.pause();
@@ -148,7 +164,6 @@ public class MusicService extends MediaBrowserServiceCompat {
                 }
                 shouldResumeAfterFocus = false;
                 break;
-
             case AudioManager.AUDIOFOCUS_GAIN:
                 if (shouldResumeAfterFocus && mediaPlayer != null) {
                     mediaPlayer.start();
@@ -181,97 +196,96 @@ public class MusicService extends MediaBrowserServiceCompat {
         return null;
     }
 
-//private void playSong(Song song) {
-//    if (mediaPlayer != null) {
-//        mediaPlayer.reset();
-//    } else {
-//        mediaPlayer = new MediaPlayer();
-//        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-////        mediaPlayer.setOnCompletionListener(mp -> playNext()); // Optional: auto play next
-//    }
-//
-//    try {
-//        mediaPlayer.setDataSource(song.getData());
-//        mediaPlayer.prepareAsync();
-//
-//        mediaPlayer.setOnPreparedListener(mp -> {
-//            mp.start();
-//
-//            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
-//                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, song.getId())
-//                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.getTitle())
-//                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.getArtist())
-//                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mediaPlayer.getDuration())
-//                    .putBitmap(
-//                            MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
-//                            MediaUtils.getAlbumArt(getApplicationContext(), song.getData()) // ✅ this line
-//                    )
-//                    .build();
-//
-//            mediaSession.setMetadata(metadata);
-//
-//            updatePlaybackState(PlaybackStateCompat.STATE_PLAYING);
-//        });
-//
-//    } catch (IOException e) {
-//        e.printStackTrace();
-//    }
-//}
+    private void playSong(Song song) {
+        if (mediaPlayer != null) {
+            mediaPlayer.reset();
+        } else {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        }
 
-private void playSong(Song song) {
-    if (mediaPlayer != null) {
-        mediaPlayer.reset();
-    } else {
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        try {
+            mediaPlayer.setDataSource(song.getData());
+            mediaPlayer.prepareAsync();
+
+            mediaPlayer.setOnPreparedListener(mp -> {
+                mp.start();
+
+                MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
+                        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, song.getId())
+                        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.getTitle())
+                        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.getArtist())
+                        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mediaPlayer.getDuration())
+                        .putBitmap(
+                                MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
+                                MediaUtils.getAlbumArt(getApplicationContext(), song.getData())
+                        )
+                        .build();
+
+                mediaSession.setMetadata(metadata);
+                updatePlaybackState(PlaybackStateCompat.STATE_PLAYING);
+                showNotification(metadata, PlaybackStateCompat.STATE_PLAYING);
+            });
+
+            mediaPlayer.setOnCompletionListener(mp -> {
+                updatePlaybackState(PlaybackStateCompat.STATE_STOPPED);
+                Song nextSong = getNextSong();
+                if (nextSong != null) {
+                    currentIndex++;
+                    playSong(nextSong);
+                }
+            });
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    try {
-        mediaPlayer.setDataSource(song.getData());
-        mediaPlayer.prepareAsync();
+    private void updatePlaybackState(int state) {
+        PlaybackStateCompat playbackState = new PlaybackStateCompat.Builder()
+                .setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE |
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE | PlaybackStateCompat.ACTION_SEEK_TO |
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                .setState(state, mediaPlayer != null ? mediaPlayer.getCurrentPosition() : 0, 1.0f)
+                .build();
 
-        mediaPlayer.setOnPreparedListener(mp -> {
-            mp.start();
-
-            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, song.getId())
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.getTitle())
-                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.getArtist())
-                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mediaPlayer.getDuration())
-                    .putBitmap(
-                            MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
-                            MediaUtils.getAlbumArt(getApplicationContext(), song.getData())
-                    )
-                    .build();
-
-            mediaSession.setMetadata(metadata);
-            updatePlaybackState(PlaybackStateCompat.STATE_PLAYING);
-        });
-
-        // ✅ Auto play next song when this one finishes
-        mediaPlayer.setOnCompletionListener(mp -> {
-            updatePlaybackState(PlaybackStateCompat.STATE_STOPPED);
-//            playNext(); // Make sure this method exists and plays the next song
-        });
-
-    } catch (IOException e) {
-        e.printStackTrace();
+        mediaSession.setPlaybackState(playbackState);
     }
-}
 
+    private void showNotification(MediaMetadataCompat metadata, int state) {
+        if (metadata == null) return;
 
-private void updatePlaybackState(int state) {
-    PlaybackStateCompat playbackState = new PlaybackStateCompat.Builder()
-            .setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE |
-                    PlaybackStateCompat.ACTION_PLAY_PAUSE | PlaybackStateCompat.ACTION_SEEK_TO |
-                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
-            .setState(state, mediaPlayer != null ? mediaPlayer.getCurrentPosition() : 0, 1.0f)
-            .build();
+        PendingIntent playPauseIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
+                this, PlaybackStateCompat.ACTION_PLAY_PAUSE
+        );
+        PendingIntent nextIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
+                this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+        );
+        PendingIntent prevIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
+                this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+        );
 
-    mediaSession.setPlaybackState(playbackState);
-}
+        int icon = state == PlaybackStateCompat.STATE_PLAYING ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play;
 
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "music_channel")
+                .setContentTitle(metadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE))
+                .setContentText(metadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST))
+                .setLargeIcon(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART))
+                .setSmallIcon(android.R.drawable.ic_media_pause)
+                .addAction(android.R.drawable.ic_media_previous, "Previous", prevIntent)
+                .addAction(icon, "Play/Pause", playPauseIntent)
+                .addAction(android.R.drawable.ic_media_next, "Next", nextIntent)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
+                        .setMediaSession(mediaSession.getSessionToken())
+                        .setShowActionsInCompactView(0, 1, 2))
+                .setOnlyAlertOnce(true)
+                .setOngoing(state == PlaybackStateCompat.STATE_PLAYING)
+                .setPriority(NotificationCompat.PRIORITY_LOW);
 
+        Notification notification = builder.build();
+        startForeground(1, notification);
+    }
 
     @Override
     public BrowserRoot onGetRoot(String clientPackageName, int clientUid, Bundle rootHints) {
@@ -294,6 +308,7 @@ private void updatePlaybackState(int state) {
         }
         progressHandler.removeCallbacks(progressRunnable);
         mediaSession.release();
+        stopForeground(true);
         super.onDestroy();
     }
 }

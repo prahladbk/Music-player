@@ -1,5 +1,8 @@
 package com.example.musicplayer.ui.player;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -54,6 +57,12 @@ public class PlayerActivity extends AppCompatActivity {
         totalTimeText = findViewById(R.id.totalTime);
 
         viewModel = new ViewModelProvider(this).get(PlayerViewModel.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34
+            if (checkSelfPermission(android.Manifest.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK}, 1001);
+            }
+        }
 
         // Receive songs and selected position
         ArrayList<Song> songs = (ArrayList<Song>) getIntent().getSerializableExtra("songs");
