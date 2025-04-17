@@ -5,23 +5,23 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.example.musicplayer.R;
-import com.example.musicplayer.data.model.CommonItem;
-import com.example.musicplayer.ui.main.adapter.CommonAdapter;
+import com.example.musicplayer.data.model.Song;
+import com.example.musicplayer.data.repository.MusicViewModel;
+import com.example.musicplayer.ui.main.adapter.SongAdapter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class LikedSongsFragment extends Fragment {
     private RecyclerView recyclerView;
+    private MusicViewModel viewModel;
 
     public LikedSongsFragment() {
         super(R.layout.fragment_liked_songs);
@@ -30,34 +30,23 @@ public class LikedSongsFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
         recyclerView = view.findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        // Setup adapter here
-        List<CommonItem> albumList = new ArrayList<>();
-        albumList.add(new CommonItem("Album One", "10 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Two", "8 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Three", "12 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album One", "10 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Two", "8 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Three", "12 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album One", "10 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Two", "8 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Three", "12 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album One", "10 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Two", "8 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Three", "12 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album One", "10 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Two", "8 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Three", "12 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album One", "10 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Two", "8 songs", R.drawable.ic_music_placeholder));
-        albumList.add(new CommonItem("Album Three", "12 songs", R.drawable.ic_music_placeholder));
 
-        CommonAdapter adapter = new CommonAdapter(albumList, item -> {
-            // Handle click event for album
-            Toast.makeText(getContext(), "Clicked: ", Toast.LENGTH_SHORT).show();
+        viewModel = new ViewModelProvider(requireActivity()).get(MusicViewModel.class);
+
+        viewModel.getLikedSongs().observe(getViewLifecycleOwner(), likedSongs -> {
+            if (likedSongs == null || likedSongs.isEmpty()) {
+                Toast.makeText(getContext(), "No liked songs found", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            SongAdapter adapter = new SongAdapter(requireContext(), likedSongs, song -> {
+                // Optionally handle song click here (already handled in adapter to launch PlayerActivity)
+            });
+
+            recyclerView.setAdapter(adapter);
         });
-
-        recyclerView.setAdapter(adapter);
     }
 }

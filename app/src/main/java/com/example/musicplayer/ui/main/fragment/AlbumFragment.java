@@ -43,6 +43,7 @@ public class AlbumFragment extends Fragment {
 
 //        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
 //                == PackageManager.PERMISSION_GRANTED) {
+        Log.d("PBK", "onViewCreated: AlbumFragment");
 
             recyclerView = view.findViewById(R.id.recyclerView);
             recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -51,6 +52,7 @@ public class AlbumFragment extends Fragment {
             Log.d("PBK", "Album Fragment loaded: ");
 
             viewModel.getSongs().observe(getViewLifecycleOwner(), songs -> {
+                Log.d("PBK", "Observed songs: " + (songs != null ? songs.size() : "null"));
                 if (songs == null || songs.isEmpty()) return;
 
                 List<CommonItem> albumItems = new ArrayList<>();
@@ -61,11 +63,6 @@ public class AlbumFragment extends Fragment {
                         albumItems.add(new CommonItem(song.getAlbum(), song.getArtist(), R.drawable.ic_music_placeholder));
                     }
                 }
-
-//                CommonAdapter adapter = new CommonAdapter(albumItems, item -> {
-//                    Toast.makeText(getContext(), "Clicked: " , Toast.LENGTH_SHORT).show();
-//
-//                });
                 CommonAdapter adapter = new CommonAdapter(albumItems, item -> {
                     SongListFragment songsFragment = SongListFragment.newInstance("album", item.getTitle());
                     requireActivity().getSupportFragmentManager().beginTransaction()

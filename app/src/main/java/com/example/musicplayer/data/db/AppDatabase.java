@@ -6,23 +6,23 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-import com.example.musicplayer.data.model.LikedSong;
+import com.example.musicplayer.data.model.Song;
 
-@Database(entities = {LikedSong.class}, version = 1)
+@Database(entities = {Song.class}, version = 2)
 public abstract class AppDatabase extends RoomDatabase {
-    private static volatile AppDatabase INSTANCE;
 
-    public abstract LikedSongDao likedSongDao();
+    private static AppDatabase INSTANCE;
 
-    public static AppDatabase getInstance(Context context) {
+    public abstract SongDao songDao();
+
+    public static synchronized AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
-            synchronized (AppDatabase.class) {
-                if (INSTANCE == null) {
-                    INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
-                            AppDatabase.class, "music_db").build();
-                }
-            }
+            INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
+                            AppDatabase.class, "music_db")
+                    .fallbackToDestructiveMigration()
+                    .build();
         }
         return INSTANCE;
     }
 }
+

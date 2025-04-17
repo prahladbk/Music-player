@@ -1,7 +1,10 @@
 package com.example.musicplayer.ui.main.adapter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,15 +15,19 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.musicplayer.R;
+import com.example.musicplayer.data.db.AppDatabase;
+import com.example.musicplayer.data.db.SongDao;
 import com.example.musicplayer.data.model.Song;
+import com.example.musicplayer.ui.player.PlayerActivity;
 import com.example.musicplayer.utils.MediaUtils;
 
 //import org.jspecify.annotations.NonNull;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder> {
-    private List<Song> songList;
+    private static List<Song> songList;
     private final Context context;
     private final OnItemClickListener listener;
 
@@ -59,29 +66,71 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
 
     public static class SongViewHolder extends RecyclerView.ViewHolder {
         TextView title;
-        ImageView albumArt;
+        ImageView albumArt,likeBtn;
 
         public SongViewHolder(@NonNull View itemView) {
             super(itemView);
             title = itemView.findViewById(R.id.textTitle);
             albumArt = itemView.findViewById(R.id.imageAlbumArt);
+            likeBtn = itemView.findViewById(R.id.imageLike);
         }
 
         public void bind(final Song song, final OnItemClickListener listener) {
             title.setText(song.getTitle());
 
-            Bitmap art = null;
-            if (song.getAlbumArt() != null) {
-                art = MediaUtils.getAlbumArt(itemView.getContext(), song.getAlbumArt());
-            }
-
-            if (art != null) {
-                albumArt.setImageBitmap(art);
+            if (song.getAlbumArt() != null && !song.getAlbumArt().isEmpty()) {
+                try {
+                    Uri uri = Uri.parse(song.getAlbumArt());
+                    albumArt.setImageURI(uri);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    albumArt.setImageResource(R.drawable.ic_music_placeholder);
+                }
             } else {
                 albumArt.setImageResource(R.drawable.ic_music_placeholder);
             }
 
-            itemView.setOnClickListener(v -> listener.onItemClick(song));
+
+
+            itemView.setOnClickListener(v -> {
+                listener.onItemClick(song); // still notifies ViewModel/Fragment if needed
+                int position = getBindingAdapterPosition();
+                // Launch PlayerActivity with song details
+                Context context = itemView.getContext();
+                Log.d("PBK", "bind: "+new ArrayList<>(songList));
+                Log.d("PBK", "bind: "+position);
+                Intent intent = new Intent(context, PlayerActivity.class);
+                intent.putExtra("songs", new ArrayList<>(songList)); // Serializable
+                intent.putExtra("position", position);
+                context.startActivity(intent);
+
+            });
+            // Handle like button click
+            likeBtn.setOnClickListener(v -> {
+                Context context = itemView.getContext();
+                AppDatabase db = AppDatabase.getInstance(context);
+                SongDao dao = db.songDao();
+
+                new Thread(() -> {
+                    Song dbSong = dao.getSongById(song.getId());
+                    if (dbSong != null) {
+                        dbSong.setLiked(!dbSong.isLiked());
+                        dao.updateSong(dbSong);
+
+                        // update UI on main thread
+                        likeBtn.post(() -> {
+                            if (dbSong.isLiked()) {
+                                likeBtn.setImageResource(R.drawable.baseline_favorite_border);
+                            } else {
+                                likeBtn.setImageResource(R.drawable.baseline_favorite_fill);
+                            }
+                        });
+                    }
+                }).start();
+            });
+
+
+
         }
 
     }

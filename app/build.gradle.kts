@@ -51,6 +51,8 @@ dependencies {
     implementation("androidx.media:media:1.6.0")
     implementation("androidx.room:room-runtime:2.7.0")
     implementation("androidx.room:room-compiler:2.7.0")
+    implementation ("androidx.room:room-runtime:2.6.1")
+    annotationProcessor ("androidx.room:room-compiler:2.6.1")
 
 
 

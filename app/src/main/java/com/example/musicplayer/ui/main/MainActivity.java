@@ -31,16 +31,18 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         bottomNavigationView = findViewById(R.id.bottomNavigationView);
         Log.d("PBK", "onCreate: "+R.id.menu_albums);
+        Log.d("PBK", "onCreate: "+R.id.menu_liked);
+        Log.d("PBK", "onCreate: "+R.id.menu_artists);
 
         bottomNavigationView.setOnItemSelectedListener(item -> {
             switch (item.getItemId()) {
-                case 2131231004:
+                case 2131231008:
                     loadFragment(new AlbumFragment());
                     return true;
-                case 2131231005:
+                case 2131231009:
                     loadFragment(new ArtistFragment());
                     return true;
-                case 2131231006:
+                case 2131231010:
                     loadFragment(new LikedSongsFragment());
                     return true;
             }
@@ -49,9 +51,12 @@ public class MainActivity extends AppCompatActivity {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+            // Load AlbumFragment temporarily until permission is granted
+            loadFragment(new AlbumFragment());
         } else {
             bottomNavigationView.setSelectedItemId(R.id.menu_albums);
         }
+
     }
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
